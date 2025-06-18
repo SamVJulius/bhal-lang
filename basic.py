@@ -146,9 +146,78 @@ class Lexer:
 
 
 ####################
+#NODES
+####################
+#NumberNode used to store numbers (ints and floats) for the parse tree
+class NumberNode:
+    def __init__(self, tok):
+        self.tok = tok
+
+    def __repr__(self):
+        return f'{self.tok}'
+
+#BinaryOpertionNode used to store binary ops like 1+2
+class BinaryOperationNode:
+    def __init__(self, left_node, op_tok, right_node):
+        self.left_node = left_node
+        self.op_tok = op_tok
+        self.right_node = right_node
+
+    def __repr__(self):
+        return f'({self.left_node} {self.op_tok} {self.right_node})'
+
+
+
+####################
+#PARSER
+####################
+
+class Parser:
+    def __init__(self, tokens):
+        self.tokens = tokens
+        self.token_idx = 1
+        self.advance()
+
+    def advance(self):
+        self.token_idx += 1
+        if self.token_idx < len(self.tokens):
+            self.current_token = self.tokens[self.token_idx]
+        return self.current_token
+
+    def parse(self):
+        res = self.expression()
+        return res
+
+    def factor(self):
+        tok = self.current_token
+        if tok.type in (TT_INT, TT_FLOAT):
+            self.advance()
+            return NumberNode(tok)
+
+    def term(self):
+        return self.binary_op(self.factor, (TT_DIV, TT_MUL))
+
+    def expression(self):
+        return self.binary_op(self.term, (TT_PLUS, TT_MINUS))
+
+    def binary_op(self, func, ops):
+        left = func()
+        while self.current_token.type in ops:
+            op_token = self.current_token
+            self.advance()
+            right = func()
+            left = BinaryOperationNode(left, op_token, right)
+        return left
+####################
 #Run
 ####################
 def run(fn, text):
+    #Generate Tokens
     lexer = Lexer(fn, text)
     tokens, error = lexer.make_token()
-    return tokens, error
+    if error: return None, error
+
+    #Generate AST
+    parser = Parser(tokens)
+    ast = parser.parse()
+    return ast, None
