@@ -174,6 +174,8 @@ class Lexer:
 class NumberNode:
     def __init__(self, tok):
         self.tok = tok
+        self.pos_start = self.tok.pos_start
+        self.pos_end = self.tok.pos_end
 
     def __repr__(self):
         return f'{self.tok}'
@@ -183,6 +185,8 @@ class BinOpNode:
         self.left_node = left_node
         self.op_tok = op_tok
         self.right_node = right_node
+        self.pos_start = left_node.pos_start
+        self.pos_end = right_node.pos_end
 
     def __repr__(self):
         return f'({self.left_node}, {self.op_tok}, {self.right_node})'
@@ -192,6 +196,8 @@ class UnaryOpNode:
     def __init__(self, op_tok, node):
         self.op_tok = op_tok
         self.node = node
+        self.pos_start = op_tok.pos_start
+        self.pos_end = node.pos_end
 
     def __repr__(self):
         return f'({self.op_tok}, {self.node})'
@@ -303,6 +309,81 @@ class Parser:
 
         return res.success(left)
 
+
+#######################################
+#Number
+#######################################
+#this class will store the numbers and perform arithmetic operations
+class Number:
+    def __init__(self, value):
+        self.value = value
+        self.set_pos()
+
+    def set_pos(self, pos_start=None, post_end=None):
+        self.pos_start = pos_start
+        self.pos_end = post_end
+        return self
+
+    def added_to(self, other):
+        if isinstance(other, Number):
+            return Number(self.value + other.value)
+
+    def subbed_by(self, other):
+        if isinstance(other, Number):
+            return Number(self.value - other.value)
+
+    def multiply_to(self, other):
+        if isinstance(other, Number):
+            return Number(self.value * other.value)
+
+    def divided_by(self, other):
+        if isinstance(other, Number):
+            return Number(self.value / other.value)
+
+    def __repr__(self):
+        return str(self.value)
+
+#######################################
+#Interpreter
+#######################################
+
+class Interpreter:
+    def visit(self, node):
+        method_name = f'visit_{type(node).__name__}'
+        method = getattr(self, method_name, self.no_visit_method)
+        return method(node)
+
+    def no_visit_method(self, node):
+        raise Exception(f'No visit_{type(node).__name__} defined')
+
+    def visit_NumberNode(self, node):
+        number = Number(node.tok.value)
+        number.set_pos(node.pos_start, node.pos_end)
+        return number
+
+    def visit_BinOpNode(self, node):
+        left = self.visit(node.left_node)
+        right = self.visit(node.right_node)
+
+        if node.op_tok.type == TT_PLUS:
+            result = left.added_to(right)
+        elif node.op_tok.type == TT_MINUS:
+            result = left.subbed_by(right)
+        elif node.op_tok.type == TT_MUL:
+            result = left.multiply_to(right)
+        elif node.op_tok.type == TT_DIV:
+            result = left.divided_by(right)
+
+        return result.set_pos(node.pos_start, node.pos_end)
+
+    def visit_UnaryOpNode(self, node):
+        number = self.visit(node.node)
+
+        if node.op_tok.value == TT_MINUS:
+            number = number.multiply_to(Number(-1))
+
+        return number.set_pos(node.pos_start, node.pos_end)
+
 #######################################
 # RUN
 #######################################
@@ -316,5 +397,10 @@ def run(fn, text):
     # Generate AST
     parser = Parser(tokens)
     ast = parser.parse()
+    if ast.error: return None, ast.error
 
-    return ast.node, ast.error
+    #Interpreter
+    interpreter = Interpreter()
+    result = interpreter.visit(ast.node)
+
+    return  result, None
