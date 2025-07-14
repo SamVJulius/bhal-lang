@@ -14,6 +14,7 @@ DIGITS = '0123456789'
 LETTERS = string.ascii_letters
 LETTERS_DIGITS = LETTERS + DIGITS
 
+
 #######################################
 # ERRORS
 #######################################
@@ -26,22 +27,26 @@ class Error:
         self.details = details
 
     def as_string(self):
-        result  = f'{self.error_name}: {self.details}\n'
+        result = f'{self.error_name}: {self.details}\n'
         result += f'File {self.pos_start.fn}, line {self.pos_start.ln + 1}'
         result += '\n\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
         return result
+
 
 class IllegalCharError(Error):
     def __init__(self, pos_start, pos_end, details):
         super().__init__(pos_start, pos_end, 'Illegal Character', details)
 
+
 class ExpectedCharError(Error):
     def __init__(self, pos_start, pos_end, details):
         super().__init__(pos_start, pos_end, 'Expected Character', details)
 
+
 class InvalidSyntaxError(Error):
     def __init__(self, pos_start, pos_end, details=''):
         super().__init__(pos_start, pos_end, 'Invalid Syntax', details)
+
 
 class RTError(Error):
     def __init__(self, pos_start, pos_end, details, context):
@@ -49,7 +54,7 @@ class RTError(Error):
         self.context = context
 
     def as_string(self):
-        result  = self.generate_traceback()
+        result = self.generate_traceback()
         result += f'{self.error_name}: {self.details}'
         result += '\n\n' + string_with_arrows(self.pos_start.ftxt, self.pos_start, self.pos_end)
         return result
@@ -65,6 +70,7 @@ class RTError(Error):
             ctx = ctx.parent
 
         return 'Traceback (most recent call last):\n' + result
+
 
 #######################################
 # POSITION
@@ -91,36 +97,42 @@ class Position:
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)
 
+
 #######################################
 # TOKENS
 #######################################
 
-TT_INT				= 'INT'
-TT_FLOAT    	= 'FLOAT'
-TT_IDENTIFIER	= 'IDENTIFIER'
-TT_KEYWORD		= 'KEYWORD'
-TT_PLUS     	= 'PLUS'
-TT_MINUS    	= 'MINUS'
-TT_MUL      	= 'MUL'
-TT_DIV      	= 'DIV'
-TT_POW				= 'POW'
-TT_EQ					= 'EQ'
-TT_LPAREN   	= 'LPAREN'
-TT_RPAREN   	= 'RPAREN'
-TT_EE					= 'EE' #
-TT_NE					= 'NE' #
-TT_LT					= 'LT' #
-TT_GT					= 'GT' #
-TT_LTE				= 'LTE' #
-TT_GTE				= 'GTE' #
-TT_EOF				= 'EOF'
+TT_INT = 'INT'
+TT_FLOAT = 'FLOAT'
+TT_IDENTIFIER = 'IDENTIFIER'
+TT_KEYWORD = 'KEYWORD'
+TT_PLUS = 'PLUS'
+TT_MINUS = 'MINUS'
+TT_MUL = 'MUL'
+TT_DIV = 'DIV'
+TT_POW = 'POW'
+TT_EQ = 'EQ'
+TT_LPAREN = 'LPAREN'
+TT_RPAREN = 'RPAREN'
+TT_EE = 'EE'  #
+TT_NE = 'NE'  #
+TT_LT = 'LT'  #
+TT_GT = 'GT'  #
+TT_LTE = 'LTE'  #
+TT_GTE = 'GTE'  #
+TT_EOF = 'EOF'
 
 KEYWORDS = [
     'BHET',
-    'BHAND', #
-    'BHOR', #
-    'BHOT' #
+    'BHAND',
+    'BHOR',
+    'BHOT',
+    'BHIF',
+    'BHEN',
+    'BHELIF',
+    'BHELSE'
 ]
+
 
 class Token:
     def __init__(self, type_, value=None, pos_start=None, pos_end=None):
@@ -141,6 +153,7 @@ class Token:
     def __repr__(self):
         if self.value: return f'{self.type}:{self.value}'
         return f'{self.type}'
+
 
 #######################################
 # LEXER
@@ -280,6 +293,7 @@ class Lexer:
 
         return Token(tok_type, pos_start=pos_start, pos_end=self.pos)
 
+
 #######################################
 # NODES
 #######################################
@@ -294,12 +308,14 @@ class NumberNode:
     def __repr__(self):
         return f'{self.tok}'
 
+
 class VarAccessNode:
     def __init__(self, var_name_tok):
         self.var_name_tok = var_name_tok
 
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.var_name_tok.pos_end
+
 
 class VarAssignNode:
     def __init__(self, var_name_tok, value_node):
@@ -308,6 +324,7 @@ class VarAssignNode:
 
         self.pos_start = self.var_name_tok.pos_start
         self.pos_end = self.value_node.pos_end
+
 
 class BinOpNode:
     def __init__(self, left_node, op_tok, right_node):
@@ -321,6 +338,7 @@ class BinOpNode:
     def __repr__(self):
         return f'({self.left_node}, {self.op_tok}, {self.right_node})'
 
+
 class UnaryOpNode:
     def __init__(self, op_tok, node):
         self.op_tok = op_tok
@@ -331,6 +349,15 @@ class UnaryOpNode:
 
     def __repr__(self):
         return f'({self.op_tok}, {self.node})'
+
+class IfNode:
+    def __init__(self, cases, else_case):
+        self.cases = cases
+        self.else_case = else_case
+
+        self.pos_start = self.cases[0][0].pos_start
+        self.pos_end = (self.else_case or self.cases[len(self.cases) - 1][0]).pos_end
+
 
 #######################################
 # PARSE RESULT
@@ -359,6 +386,7 @@ class ParseResult:
             self.error = error
         return self
 
+
 #######################################
 # PARSER
 #######################################
@@ -385,6 +413,65 @@ class Parser:
         return res
 
     ###################################
+
+    def if_expr(self):
+        res = ParseResult()
+        cases = []
+        else_case = None
+
+        if not self.current_tok.matches(TT_KEYWORD, 'BHIF'):
+            return res.failure(InvalidSyntaxError(
+                self.current_tok.pos_start, self.current_tok.pos_end,
+                f"Expected 'BHIF'"
+            ))
+
+        res.register_advancement()
+        self.advance()
+
+        condition = res.register(self.expr())
+        if res.error: return res
+
+        if not self.current_tok.matches(TT_KEYWORD, 'BHEN'):
+            return res.failure(InvalidSyntaxError(
+                self.current_tok.pos_start, self.current_tok.pos_end,
+                f"Expected 'BHEN'"
+            ))
+
+        res.register_advancement()
+        self.advance()
+
+        expr = res.register(self.expr())
+        if res.error: return res
+        cases.append((condition, expr))
+
+        while self.current_tok.matches(TT_KEYWORD, 'BHELIF'):
+            res.register_advancement()
+            self.advance()
+
+            condition = res.register(self.expr())
+            if res.error: return res
+
+            if not self.current_tok.matches(TT_KEYWORD, 'BHEN'):
+                return res.failure(InvalidSyntaxError(
+                    self.current_tok.pos_start, self.current_tok.pos_end,
+                    f"Expected 'BHEN'"
+                ))
+
+            res.register_advancement()
+            self.advance()
+
+            expr = res.register(self.expr())
+            if res.error: return res
+            cases.append((condition, expr))
+
+        if self.current_tok.matches(TT_KEYWORD, 'BHELSE'):
+            res.register_advancement()
+            self.advance()
+
+            else_case = res.register(self.expr())
+            if res.error: return res
+
+        return res.success(IfNode(cases, else_case))
 
     def atom(self):
         res = ParseResult()
@@ -415,13 +502,19 @@ class Parser:
                     "Expected ')'"
                 ))
 
+        elif tok.matches(TT_KEYWORD, 'BHIF'):
+            if_expr = res.register(self.if_expr())
+            if res.error:
+                return res
+            return res.success(if_expr)
+
         return res.failure(InvalidSyntaxError(
             tok.pos_start, tok.pos_end,
             "Expected int, float, identifier, '+', '-', '('"
         ))
 
     def power(self):
-        return self.bin_op(self.atom, (TT_POW, ), self.factor)
+        return self.bin_op(self.atom, (TT_POW,), self.factor)
 
     def factor(self):
         res = ParseResult()
@@ -523,6 +616,7 @@ class Parser:
 
         return res.success(left)
 
+
 #######################################
 # RUNTIME RESULT
 #######################################
@@ -543,6 +637,7 @@ class RTResult:
     def failure(self, error):
         self.error = error
         return self
+
 
 #######################################
 # VALUES
@@ -625,6 +720,9 @@ class Number:
     def notted(self):
         return Number(1 if self.value == 0 else 0).set_context(self.context), None
 
+    def is_true(self):
+        return self.value != 0
+
     def copy(self):
         copy = Number(self.value)
         copy.set_pos(self.pos_start, self.pos_end)
@@ -633,6 +731,7 @@ class Number:
 
     def __repr__(self):
         return str(self.value)
+
 
 #######################################
 # CONTEXT
@@ -644,6 +743,7 @@ class Context:
         self.parent = parent
         self.parent_entry_pos = parent_entry_pos
         self.symbol_table = None
+
 
 #######################################
 # SYMBOL TABLE
@@ -665,6 +765,7 @@ class SymbolTable:
 
     def remove(self, name):
         del self.symbols[name]
+
 
 #######################################
 # INTERPRETER
@@ -766,6 +867,29 @@ class Interpreter:
         else:
             return res.success(number.set_pos(node.pos_start, node.pos_end))
 
+    def visit_IfNode(self, node, context):
+        res = RTResult()
+
+        for condition, expr in node.cases:
+            condition_value = res.register(self.visit(condition, context))
+            if res.error:
+                return res
+
+            if condition_value.is_true():
+                expr_value = res.register(self.visit(expr, context))
+                if res.error:
+                    return res
+                return res.success(expr_value)
+
+        if node.else_case:
+            else_value = res.register(self.visit(node.else_case, context))
+            if res.error:
+                return res
+            return res.success(else_value)
+
+        return res.success(None)
+
+
 #######################################
 # RUN
 #######################################
@@ -774,6 +898,7 @@ global_symbol_table = SymbolTable()
 global_symbol_table.set("BHULL", Number(0))
 global_symbol_table.set("BHALSE", Number(0))
 global_symbol_table.set("BHRUE", Number(1))
+
 
 def run(fn, text):
     # Generate tokens

@@ -5,5 +5,5 @@ while True:
     result, error = basic.run("input file", commnand)
     if error:
         print(error.as_string())
-    else:
+    elif result:
         print(result)
