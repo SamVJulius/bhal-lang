@@ -1,10 +1,10 @@
 import basic
 
 while True:
-    commnand = input('bhal-lang > ')
-    if commnand.strip() == "":
+    command = input('bhal-lang > ')
+    if command.strip() == "":
         continue
-    result, error = basic.run("input file", commnand)
+    result, error = basic.run("input file", command)
     if error:
         print(error.as_string())
     elif result:
