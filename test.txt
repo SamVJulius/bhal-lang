@@ -1,6 +1,31 @@
-PRINT("Works")
+# This is a very useful piece of software
 
-VAR i = 0
-FOR i = 0 TO 5 THEN
-    PRINT(i)
-END
+BHUNC bhalify(suffix) -> "bhal" + suffix
+
+BHUNC join(elements, separator)
+	BHAR result = ""
+	BHAR len = BHLEN(elements)
+
+	BHFOR i = 0 BHO len BHEN
+		BHAR result = result + elements/i
+		BHIF i != len - 1 BHEN BHAR result = result + separator
+	BHEND
+
+	BHETURN result
+BHEND
+
+BHUNC map(elements, func)
+	BHAR new_elements = []
+
+	BHFOR i = 0 BHO BHLEN(elements) BHEN
+		BHAPPEND(new_elements, func(elements/i))
+	BHEND
+
+	BHETURN new_elements
+BHEND
+
+BHRINT("Greetings universe!")
+
+BHFOR i = 0 BHO 5 BHEN
+	BHRINT(join(map(["l", "sp"], bhalify), ", "))
+BHEND

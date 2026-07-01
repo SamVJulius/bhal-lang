@@ -1,0 +1,12 @@
+BHUNC bhalify(word)
+    BHETURN "bhal-" + word
+BHEND
+
+BHAR word = "abc"
+BHRINT(bhalify(word))
+
+BHAR words = ["a", "b", "c"]
+
+BHFOR i = 0 BHO BHLEN(words) BHEN
+    BHRINT(bhalify(words/i))
+BHEND
